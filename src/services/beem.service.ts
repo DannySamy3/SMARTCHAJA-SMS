@@ -1,0 +1,138 @@
+import axios, { AxiosInstance } from "axios";
+import https from "https";
+import { ENV } from "@/config/env";
+import { BeemSmsPayload, BeemSmsResponse } from "@/models/sms.model";
+
+/**
+ * Highly optimized client for Beem Africa SMS Gateway.
+ * Uses persistent TCP/TLS connection pooling and pre-computed auth headers
+ * to minimize CPU, memory, and network latency per request.
+ */
+export class BeemService {
+  // Pre-computed Authorization header (computed once at startup instead of per-request)
+  private static readonly authHeader: string =
+    "Basic " + Buffer.from(`${ENV.BEEM_API_KEY}:${ENV.BEEM_SECRET_KEY}`).toString("base64");
+
+  // High-performance HTTPS agent with connection pooling & keep-alive
+  private static readonly httpsAgent = new https.Agent({
+    rejectUnauthorized: false,
+    keepAlive: true,
+    maxSockets: 50,
+    maxFreeSockets: 10,
+    keepAliveMsecs: 30000,
+    timeout: 10000,
+  });
+
+  // Reusable Axios instance with pre-configured headers
+  private static readonly client: AxiosInstance = axios.create({
+    timeout: 10000,
+    httpsAgent: BeemService.httpsAgent,
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: BeemService.authHeader,
+    },
+  });
+
+  /**
+   * Send a single SMS to one recipient with retry resilience
+   */
+  static async sendSingleSms(
+    phoneNumber: string,
+    message: string,
+    senderId?: string
+  ): Promise<{ success: boolean; requestId?: number; recipient: string; message: string }> {
+    const sourceAddr = senderId || ENV.BEEM_SENDER_ID;
+
+    const payload: BeemSmsPayload = {
+      source_addr: sourceAddr,
+      schedule_time: "",
+      encoding: 0,
+      message,
+      recipients: [
+        {
+          recipient_id: 1,
+          dest_addr: phoneNumber,
+        },
+      ],
+    };
+
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const response = await this.client.post<BeemSmsResponse>(ENV.BEEM_API_URL, payload);
+
+        if (response.data && response.data.successful) {
+          return {
+            success: true,
+            requestId: response.data.request_id,
+            recipient: phoneNumber,
+            message: response.data.message || "Message Submitted Successfully",
+          };
+        } else {
+          throw new Error(response.data?.message || "Beem Africa rejected the submission");
+        }
+      } catch (err: any) {
+        lastError = err;
+        const status = err.response?.status;
+        const data = err.response?.data;
+        console.warn(`[BeemService] Attempt ${attempt} failed: Status ${status || "NET_ERR"}`, data || err.message);
+
+        if (attempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 400));
+        }
+      }
+    }
+
+    throw new Error(
+      (lastError as any)?.response?.data?.message ||
+        (lastError as any)?.message ||
+        "Failed to deliver SMS via Beem Africa"
+    );
+  }
+
+  /**
+   * Send bulk SMS to multiple recipients in a single request
+   */
+  static async sendBulkSms(
+    recipients: string[],
+    message: string,
+    senderId?: string
+  ): Promise<{ success: boolean; valid: number; total: number; message: string }> {
+    const sourceAddr = senderId || ENV.BEEM_SENDER_ID;
+
+    const beemRecipients = recipients.map((phone, idx) => ({
+      recipient_id: idx + 1,
+      dest_addr: phone,
+    }));
+
+    const payload: BeemSmsPayload = {
+      source_addr: sourceAddr,
+      schedule_time: "",
+      encoding: 0,
+      message,
+      recipients: beemRecipients,
+    };
+
+    const response = await this.client.post<BeemSmsResponse>(ENV.BEEM_API_URL, payload);
+
+    if (response.data && response.data.successful) {
+      return {
+        success: true,
+        valid: response.data.valid || recipients.length,
+        total: recipients.length,
+        message: response.data.message || "Bulk messages queued successfully",
+      };
+    }
+
+    throw new Error(response.data?.message || "Failed to dispatch bulk SMS");
+  }
+
+  /**
+   * Check SMS Balance on Beem Africa
+   */
+  static async getBalance(): Promise<any> {
+    const response = await this.client.get(ENV.BEEM_BALANCE_URL);
+    return response.data;
+  }
+}

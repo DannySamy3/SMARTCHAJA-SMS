@@ -1,0 +1,25 @@
+{
+  "name": "smartchaja-sms-service",
+  "version": "2.0.0",
+  "description": "Production Next.js MVC microservice for SmartChaja Beem Africa SMS dispatch",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 7677",
+    "build": "next build",
+    "start": "next start -p 7677",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "next": "^14.2.23",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.10",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  smartchaja-sms-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smartchaja-sms-service
+    restart: unless-stopped
+    ports:
+      - "7677:7677"
+    environment:
+      - PORT=7677
+      - NODE_ENV=production
+      - API_SECRET_KEY=${API_SECRET_KEY}
+      - BEEM_API_KEY=${BEEM_API_KEY}
+      - BEEM_SECRET_KEY=${BEEM_SECRET_KEY}
+      - BEEM_SENDER_ID=${BEEM_SENDER_ID:-SmartChaja}
+    env_file:
+      - .env
