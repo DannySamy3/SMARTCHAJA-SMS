@@ -1,3 +1,6 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 /**
  * Environment configuration.
  * Real secrets are loaded from environment variables or .env file.

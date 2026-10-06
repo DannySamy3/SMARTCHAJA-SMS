@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from "axios";
 import https from "https";
-import { ENV } from "@/config/env";
-import { BeemSmsPayload, BeemSmsResponse } from "@/models/sms.model";
+import { ENV } from "../config/env";
+import { BeemSmsPayload, BeemSmsResponse } from "../models/sms.model";
 
 /**
  * Highly optimized client for Beem Africa SMS Gateway.
@@ -9,10 +9,6 @@ import { BeemSmsPayload, BeemSmsResponse } from "@/models/sms.model";
  * to minimize CPU, memory, and network latency per request.
  */
 export class BeemService {
-  // Pre-computed Authorization header (computed once at startup instead of per-request)
-  private static readonly authHeader: string =
-    "Basic " + Buffer.from(`${ENV.BEEM_API_KEY}:${ENV.BEEM_SECRET_KEY}`).toString("base64");
-
   // High-performance HTTPS agent with connection pooling & keep-alive
   private static readonly httpsAgent = new https.Agent({
     rejectUnauthorized: false,
@@ -30,9 +26,15 @@ export class BeemService {
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
-      Authorization: BeemService.authHeader,
     },
   });
+
+  private static getHeaders() {
+    const authHeader = "Basic " + Buffer.from(`${ENV.BEEM_API_KEY}:${ENV.BEEM_SECRET_KEY}`).toString("base64");
+    return {
+      Authorization: authHeader,
+    };
+  }
 
   /**
    * Send a single SMS to one recipient with retry resilience
@@ -60,7 +62,9 @@ export class BeemService {
     let lastError: unknown;
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
-        const response = await this.client.post<BeemSmsResponse>(ENV.BEEM_API_URL, payload);
+        const response = await this.client.post<BeemSmsResponse>(ENV.BEEM_API_URL, payload, {
+          headers: this.getHeaders(),
+        });
 
         if (response.data && response.data.successful) {
           return {
@@ -114,7 +118,9 @@ export class BeemService {
       recipients: beemRecipients,
     };
 
-    const response = await this.client.post<BeemSmsResponse>(ENV.BEEM_API_URL, payload);
+    const response = await this.client.post<BeemSmsResponse>(ENV.BEEM_API_URL, payload, {
+      headers: this.getHeaders(),
+    });
 
     if (response.data && response.data.successful) {
       return {
@@ -132,7 +138,9 @@ export class BeemService {
    * Check SMS Balance on Beem Africa
    */
   static async getBalance(): Promise<any> {
-    const response = await this.client.get(ENV.BEEM_BALANCE_URL);
+    const response = await this.client.get(ENV.BEEM_BALANCE_URL, {
+      headers: this.getHeaders(),
+    });
     return response.data;
   }
 }

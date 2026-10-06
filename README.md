@@ -1,31 +1,33 @@
-# SmartChaja SMS & OTP Gateway (Next.js MVC)
+# SmartChaja SMS & OTP Gateway (Express.js TypeScript)
 
-A production-grade, enterprise Next.js microservice architected with **Model-View-Controller (MVC)** design principles to manage and dispatch all **Beem Africa SMS services** for SmartChaja.
+A lightweight, high-performance, pure Express.js TypeScript microservice architected with **Model-View-Controller (MVC)** design principles to manage and dispatch all **Beem Africa SMS services** for SmartChaja.
 
 Designed to run in Docker on your Hostinger VPS, giving it a clean, static IP address that completely bypasses Beem Africa's AWS WAF / Cloudflare bot protection.
 
 ---
 
-## 🏛️ MVC Architecture Overview
+## 🏛️ Architecture Overview
 
 ```
 smartchaja-sms-service/
-├── Dockerfile                      # Multi-stage production build (standalone)
+├── Dockerfile                      # Multi-stage production build (Node 20 Alpine)
 ├── docker-compose.yml              # Container orchestration
-├── next.config.mjs                 # Next.js config (output: "standalone")
 ├── package.json
 ├── tsconfig.json
 └── src/
+    ├── server.ts                   # Express server entrypoint & middleware setup
     ├── config/
     │   └── env.ts                  # Centralized configuration & environment loader
-    ├── models/                     # [M] Models Layer: Data schemas & type safety
+    ├── models/                     # Data schemas & type safety (Zod)
     │   ├── sms.model.ts            # Zod validation schemas (OTP, Rental, Return, Reminder)
     │   └── response.model.ts       # Standardized API response envelopes
-    ├── views/                      # [V] Views Layer: Web Dashboard & REST JSON serializers
-    │   └── app/
-    │       ├── page.tsx            # Live dashboard & interactive API documentation
-    │       └── layout.tsx
-    ├── controllers/                # [C] Controllers Layer: HTTP Request & Response handlers
+    ├── routes/                     # Express API Routers
+    │   ├── index.ts                # Route aggregator
+    │   ├── health.routes.ts        # Health monitoring
+    │   ├── balance.routes.ts       # Beem balance check
+    │   ├── sms.routes.ts           # Single & bulk SMS dispatch
+    │   └── template.routes.ts      # SmartChaja template SMS dispatch
+    ├── controllers/                # Request & response controllers
     │   ├── otp.controller.ts       # OTP dispatch handler
     │   ├── rental.controller.ts    # Power bank pickup, reminder, and return handlers
     │   ├── sms.controller.ts       # Generic single & bulk SMS handlers
@@ -33,19 +35,8 @@ smartchaja-sms-service/
     ├── services/                   # Business Logic & Gateway Clients
     │   ├── beem.service.ts         # Beem Africa client with keepAlive HTTPS agent & 2-phase retry
     │   └── template.service.ts     # Single source of truth for all SmartChaja SMS templates
-    ├── middleware/
-    │   └── auth.middleware.ts      # API Key authentication guard (x-api-key)
-    └── app/api/                    # Next.js App Router API Endpoints
-        ├── health/route.ts         # Health monitoring
-        ├── balance/route.ts        # Beem balance check
-        ├── sms/
-        │   ├── send/route.ts       # Custom SMS
-        │   └── bulk/route.ts       # Bulk SMS
-        └── templates/
-            ├── otp/route.ts             # OTP SMS
-            ├── rental-pickup/route.ts   # Rental pickup confirmation
-            ├── rental-reminder/route.ts # 15-min expiry reminder
-            └── rental-return/route.ts   # Power bank return confirmation
+    └── middleware/
+        └── auth.middleware.ts      # API Key authentication guard (x-api-key)
 ```
 
 ---
@@ -92,7 +83,7 @@ docker-compose up -d --build
 docker-compose logs -f
 ```
 
-The web dashboard and API will be running at `http://localhost:7677` (or `http://YOUR_SERVER_IP:7677`).
+The REST API microservice will be running at `http://localhost:7677` (or `http://YOUR_SERVER_IP:7677`).
 
 ---
 

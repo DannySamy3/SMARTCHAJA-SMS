@@ -1,24 +1,23 @@
-import { NextRequest } from "next/server";
+import { Request, Response } from "express";
 import {
   SendRentalPickupSchema,
   SendRentalReminderSchema,
   SendRentalReturnSchema,
-} from "@/models/sms.model";
-import { ApiResponse } from "@/models/response.model";
-import { TemplateService } from "@/services/template.service";
-import { BeemService } from "@/services/beem.service";
+} from "../models/sms.model";
+import { ApiResponse } from "../models/response.model";
+import { TemplateService } from "../services/template.service";
+import { BeemService } from "../services/beem.service";
 
 export class RentalController {
   /**
    * 1. Send SMS when a user rents/unlocks a power bank
    */
-  static async sendPickupSms(req: NextRequest) {
+  static async sendPickupSms(req: Request, res: Response) {
     try {
-      const body = await req.json().catch(() => ({}));
-      const parseResult = SendRentalPickupSchema.safeParse(body);
+      const parseResult = SendRentalPickupSchema.safeParse(req.body);
 
       if (!parseResult.success) {
-        return ApiResponse.badRequest("Validation failed", parseResult.error.flatten());
+        return ApiResponse.badRequest(res, "Validation failed", parseResult.error.flatten());
       }
 
       const { phoneNumber, customMessage } = parseResult.data;
@@ -27,6 +26,7 @@ export class RentalController {
       const result = await BeemService.sendSingleSms(phoneNumber, message);
 
       return ApiResponse.success(
+        res,
         {
           recipient: result.recipient,
           requestId: result.requestId,
@@ -35,20 +35,19 @@ export class RentalController {
       );
     } catch (error: any) {
       console.error("[RentalController.sendPickupSms] Error:", error.message);
-      return ApiResponse.gatewayError(error.message || "Failed to send rental pickup SMS");
+      return ApiResponse.gatewayError(res, error.message || "Failed to send rental pickup SMS");
     }
   }
 
   /**
    * 2. Send SMS reminder before rental period ends
    */
-  static async sendReminderSms(req: NextRequest) {
+  static async sendReminderSms(req: Request, res: Response) {
     try {
-      const body = await req.json().catch(() => ({}));
-      const parseResult = SendRentalReminderSchema.safeParse(body);
+      const parseResult = SendRentalReminderSchema.safeParse(req.body);
 
       if (!parseResult.success) {
-        return ApiResponse.badRequest("Validation failed", parseResult.error.flatten());
+        return ApiResponse.badRequest(res, "Validation failed", parseResult.error.flatten());
       }
 
       const { phoneNumber, customMessage } = parseResult.data;
@@ -57,6 +56,7 @@ export class RentalController {
       const result = await BeemService.sendSingleSms(phoneNumber, message);
 
       return ApiResponse.success(
+        res,
         {
           recipient: result.recipient,
           requestId: result.requestId,
@@ -65,20 +65,19 @@ export class RentalController {
       );
     } catch (error: any) {
       console.error("[RentalController.sendReminderSms] Error:", error.message);
-      return ApiResponse.gatewayError(error.message || "Failed to send rental reminder SMS");
+      return ApiResponse.gatewayError(res, error.message || "Failed to send rental reminder SMS");
     }
   }
 
   /**
    * 3. Send SMS when a power bank is returned to station
    */
-  static async sendReturnSms(req: NextRequest) {
+  static async sendReturnSms(req: Request, res: Response) {
     try {
-      const body = await req.json().catch(() => ({}));
-      const parseResult = SendRentalReturnSchema.safeParse(body);
+      const parseResult = SendRentalReturnSchema.safeParse(req.body);
 
       if (!parseResult.success) {
-        return ApiResponse.badRequest("Validation failed", parseResult.error.flatten());
+        return ApiResponse.badRequest(res, "Validation failed", parseResult.error.flatten());
       }
 
       const { phoneNumber, customMessage } = parseResult.data;
@@ -87,6 +86,7 @@ export class RentalController {
       const result = await BeemService.sendSingleSms(phoneNumber, message);
 
       return ApiResponse.success(
+        res,
         {
           recipient: result.recipient,
           requestId: result.requestId,
@@ -95,7 +95,7 @@ export class RentalController {
       );
     } catch (error: any) {
       console.error("[RentalController.sendReturnSms] Error:", error.message);
-      return ApiResponse.gatewayError(error.message || "Failed to send rental return SMS");
+      return ApiResponse.gatewayError(res, error.message || "Failed to send rental return SMS");
     }
   }
 }
