@@ -46,6 +46,16 @@ export class BeemService {
     this.client.defaults.httpsAgent = this.httpsAgent;
   }
 
+  private static formatPhoneNumber(phone: string): string {
+    let cleaned = phone.replace(/\D/g, "").trim();
+    if (cleaned.startsWith("0")) {
+      cleaned = "255" + cleaned.substring(1);
+    } else if (!cleaned.startsWith("255") && cleaned.length === 9) {
+      cleaned = "255" + cleaned;
+    }
+    return cleaned;
+  }
+
   private static getHeaders() {
     const authHeader = "Basic " + Buffer.from(`${ENV.BEEM_API_KEY}:${ENV.BEEM_SECRET_KEY}`).toString("base64");
     return {
@@ -63,6 +73,7 @@ export class BeemService {
   ): Promise<{ success: boolean; requestId?: number; recipient: string; message: string }> {
     const sourceAddr = senderId || ENV.BEEM_SENDER_ID;
 
+    const formattedPhone = this.formatPhoneNumber(phoneNumber);
     const payload: BeemSmsPayload = {
       source_addr: sourceAddr,
       schedule_time: "",
@@ -71,7 +82,7 @@ export class BeemService {
       recipients: [
         {
           recipient_id: 1,
-          dest_addr: phoneNumber,
+          dest_addr: formattedPhone,
         },
       ],
     };
@@ -131,7 +142,7 @@ export class BeemService {
 
     const beemRecipients = recipients.map((phone, idx) => ({
       recipient_id: idx + 1,
-      dest_addr: phone,
+      dest_addr: this.formatPhoneNumber(phone),
     }));
 
     const payload: BeemSmsPayload = {
